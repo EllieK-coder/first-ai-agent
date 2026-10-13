@@ -23,5 +23,5 @@ def find_games_by_tag(tag: str) -> str:
 
     return str(results)
 
-
-print(find_games_by_tag("Relaxing"))
+if __name__ == "__main__":
+    print(find_games_by_tag("Relaxing"))
