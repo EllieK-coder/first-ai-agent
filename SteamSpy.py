@@ -7,14 +7,21 @@
 
 import requests
 
-response = requests.get(
-"https://steamspy.com/api.php",
-    params={"request": "tag", "tag": "Roguelike"}
-)
 
-data = response.json()
+def find_games_by_tag(tag: str) -> str:
+    """Find Steam games that have a given tag, such as Roguelike or Relaxing."""
+    response = requests.get(
+        "https://steamspy.com/api.php",
+        params={"request": "tag", "tag": tag}
+    )
+    data = response.json()
+    games = list(data.values())
 
-games = list(data.values())
+    results = []
+    for game in games[:5]:
+        results.append({"name": game["name"], "positive": game["positive"]})
 
-for game in games[:5]:
-    print(game["name"], "-", game["positive"], "positive reviews")
+    return str(results)
+
+
+print(find_games_by_tag("Relaxing"))
