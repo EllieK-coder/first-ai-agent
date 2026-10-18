@@ -33,5 +33,5 @@ if __name__ == "__main__":
     print("You own", len(games), "games")
 
     for game in games:
-        print(game["name"], "-", game["playtime_forever"], "minutes")
-        print("Found .env:", load_dotenv())
+        if game["playtime_forever"] < 60:
+            print(game["name"], "-", game["playtime_forever"], "minutes")
