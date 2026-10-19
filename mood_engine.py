@@ -1,13 +1,31 @@
 import json
 
-BACKLOG_MINUTES = 120  # games played less than this count as backlog
-BACKLOG_BONUS = 0.1  # how much extra score backlog games get
-MIN_SCORE = 0.3  # games that match the mood less than this are not recommended
+BACKLOG_MINUTES = 120   # games played less than this count as backlog
+BACKLOG_BONUS = 0.1     # how much extra score backlog games get
+MIN_SCORE = 0.3         # games that match the mood less than this are not recommended
+EXCLUDE_APPIDS = {1938090}   # launchers and non-games: CHECK this matches "Call of Duty®" in your library.json
 
 
 def load_library():
     with open("library.json", "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def clean_library(library):
+    """Remove excluded entries, games without tags, and exact-name duplicates."""
+    best = {}   # name -> the version of the game we keep
+
+    for game in library:
+        if game["appid"] in EXCLUDE_APPIDS:
+            continue
+        if not game["tags"]:
+            continue
+
+        name = game["name"]
+        if name not in best or game["playtime"] > best[name]["playtime"]:
+            best[name] = game
+
+    return list(best.values())
 
 
 def tag_strengths(tags):
@@ -71,7 +89,8 @@ def rank_library(library, profile, top_n=10):
 
 
 if __name__ == "__main__":
-    library = load_library()
+    library = clean_library(load_library())
+    print("Games after cleaning:", len(library))
 
     # uncomment to see every tag you can use in a profile
     # print(all_tags(library))
