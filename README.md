@@ -51,6 +51,7 @@ The conversation history (`messages` list) is the agent's memory: every user mes
 | `SteamSpy.py` | `find_games_by_tag` tool: queries the SteamSpy API |
 | `steam_library.py` | Fetches the user's owned games and playtime from the Steam Web API |
 | `build_library.py` | Builds a local `library.json` cache: owned games + SteamSpy tags with vote counts |
+| `mood_engine.py` | Ranks the library against a weighted mood profile: tag strengths, match score, backlog bonus, minimum threshold |
 | `test_connection.py` | Minimal check that Ollama is running and responding |
 
 `library.json` and `.env` (API keys) are git-ignored.
@@ -113,8 +114,8 @@ AI: Here are a few relaxing games you might enjoy: ...
 ### Phase 2: Mood engine (core feature)
 - [x] Normalise tag vote counts into a 0–1 strength per game
 - [x] Scoring: rank owned games against a weighted mood profile
-- [ ] Backlog bonus for unplayed / barely played games
-- [ ] Minimum score threshold, so weak matches are not recommended
+- [x] Backlog bonus for unplayed / barely played games
+- [x] Minimum score threshold, so weak matches are not recommended
 - [ ] Negative weights (e.g. `Stealth: -0.5` for an "anger" mood) to push down games with the wrong feel
 - [ ] Clean the library: skip test servers / launcher entries, merge duplicate versions
 - [ ] Mood → profile: LLM turns the user's words into weighted tags as JSON, limited to tags that exist in the library
