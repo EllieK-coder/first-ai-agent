@@ -51,7 +51,7 @@ The conversation history (`messages` list) is the agent's memory: every user mes
 | `SteamSpy.py` | `find_games_by_tag` tool: queries the SteamSpy API |
 | `steam_library.py` | Fetches the user's owned games and playtime from the Steam Web API |
 | `build_library.py` | Builds a local `library.json` cache: owned games + SteamSpy tags with vote counts |
-| `mood_engine.py` | Ranks the library against a weighted mood profile: tag strengths, match score, backlog bonus, minimum threshold |
+| `mood_engine.py` | Cleans the library and ranks it against a weighted mood profile: tag strengths, match score, backlog bonus, minimum threshold |
 | `test_connection.py` | Minimal check that Ollama is running and responding |
 
 `library.json` and `.env` (API keys) are git-ignored.
@@ -117,8 +117,10 @@ AI: Here are a few relaxing games you might enjoy: ...
 - [x] Backlog bonus for unplayed / barely played games
 - [x] Minimum score threshold, so weak matches are not recommended
 - [ ] Negative weights (e.g. `Stealth: -0.5` for an "anger" mood) to push down games with the wrong feel
-- [ ] Clean the library: skip test servers / launcher entries, merge duplicate versions
-- [ ] Mood → profile: LLM turns the user's words into weighted tags as JSON, limited to tags that exist in the library
+- [x] Clean the library: skip test servers / launcher entries, drop untagged games, merge exact-name duplicates
+- [ ] Handle different editions of the same game (e.g. Skyrim and Skyrim Special Edition)
+- [x] Mood → profile: LLM turns the user's words into weighted tags as JSON, limited to a curated list of mood tags that exist in the library
+- [x] Validate model output: drop invented tags and zero/negative weights, map common synonyms to real tags
 - [ ] Final pick: LLM chooses 1–3 games from the top candidates only, with a "you already own this" nudge
 - [ ] Ask "a game you own, or something new?" only when the user hasn't said; default to the library
 - [ ] Wire it into the agent as `recommend_from_library(mood)` and `find_new_games(mood)` tools

@@ -2,8 +2,9 @@ import json
 
 BACKLOG_MINUTES = 120   # games played less than this count as backlog
 BACKLOG_BONUS = 0.1     # how much extra score backlog games get
-MIN_SCORE = 0.3         # games that match the mood less than this are not recommended
+MIN_SCORE = 0.4        # games that match the mood less than this are not recommended
 EXCLUDE_APPIDS = {1938090}   # launchers and non-games: CHECK this matches "Call of Duty®" in your library.json
+TAGS_TO_MATCH = 3   # a game that strongly matches this many of the mood's tags scores 1.0
 
 
 def load_library():
@@ -57,7 +58,8 @@ def score_game(game, profile):
     for tag, weight in profile.items():
         total += weight * strengths.get(tag, 0)
 
-    return round(total / sum(profile.values()), 2)
+    top_weights = sorted(profile.values(), reverse=True)[:TAGS_TO_MATCH]
+    return round(min(total / sum(top_weights), 1.0), 2)
 
 
 def rank_library(library, profile, top_n=10):
