@@ -1,19 +1,23 @@
-Steam Game Picker Agent
+# Steam Game Picker Agent
 
 A conversational AI agent that helps you decide what to play on Steam. You chat with it about your mood and what you feel like playing, and it searches Steam game data through a tool and recommends games that fit.
 
-Built in Python as a hands-on project to learn how AI agents work under the hood: tool calling, the agent loop, routing, and prompt design. It is built without an agent framework, so every part of the loop is visible in the code.
+Built in Python as a hands-on project to learn how AI agents work under the hood: tool calling, the agent loop, routing, and prompt design. It is built **without an agent framework**, so every part of the loop is visible in the code.
 
-Status: work in progress. Core agent loop and Steam tag search are working; see the roadmap below.
+> **Status:** work in progress. Core agent loop and Steam tag search are working; see the roadmap below.
 
-Features
-Natural conversation: small talk, greetings and "just testing" messages get normal replies, with no unnecessary searches.
-Tool calling: the model decides when to call find_games_by_tag, which queries the SteamSpy API for games with a given Steam tag (e.g. Relaxing, Roguelike, Horror).
-Router step: a lightweight YES/NO classification call decides whether the user is actually asking for game suggestions before tools are made available to the model.
-Agent loop: the model can request tools, receive their results, and continue until it produces a final answer.
-Runs locally: uses Ollama with a local model, so no API key or cloud costs.
-Debug mode: a DEBUG flag shows router decisions and tool calls for troubleshooting.
-How it works
+## Features
+
+- **Natural conversation:** small talk, greetings and "just testing" messages get normal replies, with no unnecessary searches.
+- **Tool calling:** the model decides when to call `find_games_by_tag`, which queries the SteamSpy API for games with a given Steam tag (e.g. `Relaxing`, `Roguelike`, `Horror`).
+- **Router step:** a lightweight YES/NO classification call decides whether the user is actually asking for game suggestions before tools are made available to the model.
+- **Agent loop:** the model can request tools, receive their results, and continue until it produces a final answer.
+- **Runs locally:** uses [Ollama](https://ollama.com) with a local model, so no API key or cloud costs.
+- **Debug mode:** a `DEBUG` flag shows router decisions and tool calls for troubleshooting.
+
+## How it works
+
+```
 User message
      │
      ▼
@@ -35,84 +39,122 @@ Router (YES/NO): does the user want game suggestions?
                     │
                     ▼
             Recommendation shown to the user
+```
 
-The conversation history (messages list) is the agent's memory: every user message, model reply and tool result is appended to it and sent with each request.
+The conversation history (`messages` list) is the agent's memory: every user message, model reply and tool result is appended to it and sent with each request.
 
-Project structure
-File	Purpose
-main.py	Chat loop, system prompt, router and agent loop
-SteamSpy.py	find_games_by_tag tool: queries the SteamSpy API
-steam_library.py	Fetches the user's owned games and playtime from the Steam Web API
-build_library.py	Builds a local library.json cache: owned games + SteamSpy tags with vote counts
-test_connection.py	Minimal check that Ollama is running and responding
+## Project structure
 
-library.json and .env (API keys) are git-ignored.
+| File | Purpose |
+|---|---|
+| `main.py` | Chat loop, system prompt, router and agent loop |
+| `SteamSpy.py` | `find_games_by_tag` tool: queries the SteamSpy API |
+| `steam_library.py` | Fetches the user's owned games and playtime from the Steam Web API |
+| `build_library.py` | Builds a local `library.json` cache: owned games + SteamSpy tags with vote counts |
+| `test_connection.py` | Minimal check that Ollama is running and responding |
 
-Setup
+`library.json` and `.env` (API keys) are git-ignored.
 
-Requirements: Python 3.10+ and Ollama.
+## Setup
 
-Install Ollama and pull the model:
+**Requirements:** Python 3.10+ and [Ollama](https://ollama.com).
+
+1. Install Ollama and pull the model:
+   ```
    ollama pull llama3.2
-Clone the repo and create a virtual environment:
+   ```
+2. Clone the repo and create a virtual environment:
+   ```
    git clone https://github.com/EllieK-coder/first-ai-agent.git
    cd first-ai-agent
    python -m venv .venv
    .venv\Scripts\activate        # Windows
    source .venv/bin/activate     # macOS / Linux
-Install dependencies:
+   ```
+3. Install dependencies:
+   ```
    pip install ollama requests
-Run the agent:
+   ```
+4. Run the agent:
+   ```
    python main.py
+   ```
+   Type `quit` to exit. Set `DEBUG = True` in `main.py` to see router decisions and tool calls.
 
-Type quit to exit. Set DEBUG = True in main.py to see router decisions and tool calls.
+## Example
 
-Example
+```
 AI: Hello! How can I help you find a game today?
 You: hi
 AI: Hi! How's your day going so far? ...
 You: I had a long day, I want something relaxing
 AI: Here are a few relaxing games you might enjoy: ...
-Challenges and lessons learned
-Small models over-use tools. With a 3B-parameter model, the agent originally searched for games even when the user just said "hi", and sometimes printed tool calls as plain text. Instructions in the system prompt alone did not fix this. Adding a separate router step, a single YES/NO question that small models handle well, solved it.
-Deterministic parts belong in code. The opening greeting is printed by the program, not generated by the model, so it is consistent every time.
-External data is messy. SteamSpy's tag lists include games that only weakly match a tag (e.g. action games appearing under "Relaxing"). The model then tries to justify those results. Filtering by tag vote counts is planned.
-Models can recommend games outside the tool results. Prompting the model to recommend only from tool results reduces this, but small models do not always follow it.
-Roadmap
+```
 
-Goal for v1: the user describes a mood in their own words ("I want to relax", "I need to release some anger"), and the agent recommends 1–3 games from their own library, prioritising the forgotten backlog, and falls back to the Steam store only when nothing owned fits.
+## Challenges and lessons learned
 
-Phase 1: Foundations ✅
- Chat loop with conversation memory
- Tool calling + hand-written agent loop
- Router step so tools are only used when relevant
- SteamSpy tag search tool
- Fetch owned games and playtime from the Steam Web API
- Cache the library with tags and vote counts in library.json
-Phase 2: Mood engine (core feature)
- Normalise tag vote counts into a 0–1 strength per game
- Clean the library: skip test servers / separate modes, merge duplicate versions
- Mood → profile: LLM turns the user's words into weighted tags as JSON, limited to tags that exist in the library
- Scoring: pure Python function ranking owned games against the profile, with a backlog bonus
- Final pick: LLM chooses 1–3 games from the top candidates only, with a "you already own this" nudge
- Wire it into the agent as a recommend_from_library(mood) tool
- Give the router recent conversation context, so replies like "yes please" are understood
-Phase 3: Discover mode
- Fall back to SteamSpy store search when no owned game scores above a threshold
- Exclude games the user already owns from store results
- Optional get_game_details (price, short description) from the Steam store
-Phase 4: Robustness
- Error handling: API failures and timeouts, private profiles, empty results, invalid JSON from the model
- Incremental library refresh (only fetch tags for new games, resume after a crash)
- pytest suite for the pure parts: scoring, filtering, de-duplication, parsing the mood profile
- requirements.txt, config for model name and thresholds, logging instead of prints
-Phase 5: Evaluation and polish
- A small evaluation set of moods with expected results; compare llama3.2 vs qwen2.5:7b
- README: updated architecture diagram, example conversations, lessons learned
-Stretch
- Semantic search with embeddings over game descriptions
- Remember feedback ("played it", "not interested") between sessions
- Simple web UI
-Tech
+- **Small models over-use tools.** With a 3B-parameter model, the agent originally searched for games even when the user just said "hi", and sometimes printed tool calls as plain text. Instructions in the system prompt alone did not fix this. Adding a separate **router** step, a single YES/NO question that small models handle well, solved it.
+- **Deterministic parts belong in code.** The opening greeting is printed by the program, not generated by the model, so it is consistent every time.
+- **External data is messy.** SteamSpy's tag lists include games that only weakly match a tag (e.g. action games appearing under "Relaxing"). The model then tries to justify those results. Filtering by tag vote counts is planned.
+- **Models can recommend games outside the tool results.** Prompting the model to recommend only from tool results reduces this, but small models do not always follow it.
+
+## Roadmap
+
+**Goal for v1:** the user describes a mood in their own words ("I want to relax", "I need to release some anger"), and the agent recommends 1–3 games from their own library, prioritising the forgotten backlog, and falls back to the Steam store only when nothing owned fits.
+
+### Phase 1: Foundations ✅
+- [x] Chat loop with conversation memory
+- [x] Tool calling + hand-written agent loop
+- [x] Router step so tools are only used when relevant
+- [x] SteamSpy tag search tool
+- [x] Fetch owned games and playtime from the Steam Web API
+- [x] Cache the library with tags and vote counts in `library.json`
+
+### Phase 2: Mood engine (core feature)
+- [x] Normalise tag vote counts into a 0–1 strength per game
+- [x] Scoring: rank owned games against a weighted mood profile
+- [ ] Backlog bonus for unplayed / barely played games
+- [ ] Minimum score threshold, so weak matches are not recommended
+- [ ] Negative weights (e.g. `Stealth: -0.5` for an "anger" mood) to push down games with the wrong feel
+- [ ] Clean the library: skip test servers / launcher entries, merge duplicate versions
+- [ ] Mood → profile: LLM turns the user's words into weighted tags as JSON, limited to tags that exist in the library
+- [ ] Final pick: LLM chooses 1–3 games from the top candidates only, with a "you already own this" nudge
+- [ ] Ask "a game you own, or something new?" only when the user hasn't said; default to the library
+- [ ] Wire it into the agent as `recommend_from_library(mood)` and `find_new_games(mood)` tools
+- [ ] Give the router recent conversation context, so replies like "yes please" are understood
+
+### Phase 3: Discover mode
+- [ ] Fall back to SteamSpy store search when no owned game scores above a threshold
+- [ ] Exclude games the user already owns from store results
+- [ ] Optional `get_game_details` (price, short description) from the Steam store
+
+### Phase 4: Robustness
+- [ ] Error handling: API failures and timeouts, private profiles, empty results, invalid JSON from the model
+- [ ] Incremental library refresh (only fetch tags for new games, resume after a crash)
+- [ ] pytest suite for the pure parts: scoring, filtering, de-duplication, parsing the mood profile
+- [ ] `requirements.txt`, config for model name and thresholds, logging instead of prints
+
+### Phase 5: Users, privacy and security
+- [ ] **Onboarding:** accept a Steam profile link, custom name or 17-digit ID at startup and resolve it (`ResolveVanityURL`), so users never edit config files
+- [ ] **Multiple users:** Steam ID as a parameter everywhere; one library file per user
+- [ ] **Split data:** a shared game catalog (tags, not personal data) separate from each user's library (owned games and playtime, personal data)
+- [ ] **Retention:** user library data expires after 10 days and is rebuilt on next use
+- [ ] **Delete my data** command that removes a user's data immediately
+- [ ] **Data minimisation:** store only what scoring needs (appid, playtime)
+- [ ] **Privacy note:** what is stored, where, for how long, and how to delete it
+- [ ] **Security:** API key only in `.env` (never logged or committed), validate user input before API calls, timeouts on all requests, treat model output as untrusted
+- [ ] Clear errors for private profiles and invalid IDs
+
+### Phase 6: Evaluation and polish
+- [ ] A small evaluation set of moods with expected results; compare `llama3.2` vs `qwen2.5:7b`
+- [ ] README: updated architecture diagram, example conversations, lessons learned
+
+### Stretch
+- [ ] Semantic search with embeddings over game descriptions
+- [ ] Remember feedback ("played it", "not interested") between sessions
+- [ ] Simple web UI
+- [ ] "Sign in through Steam" (OpenID) instead of typing a Steam ID, if it ever becomes a hosted app
+
+## Tech
 
 Python · Ollama (llama3.2) · SteamSpy API · requests

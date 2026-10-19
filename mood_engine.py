@@ -1,5 +1,9 @@
 import json
 
+BACKLOG_MINUTES = 120  # games played less than this count as backlog
+BACKLOG_BONUS = 0.1  # how much extra score backlog games get
+MIN_SCORE = 0.3  # games that match the mood less than this are not recommended
+
 
 def load_library():
     with open("library.json", "r", encoding="utf-8") as f:
@@ -41,10 +45,26 @@ def score_game(game, profile):
 def rank_library(library, profile, top_n=10):
     scored = []
     for game in library:
-        score = score_game(game, profile)
-        # TODO: backlog bonus goes here
-        if score > 0:
-            scored.append({"name": game["name"], "playtime": game["playtime"], "score": score})
+        match = score_game(game, profile)
+
+        # 1. skip weak matches before any bonus
+        if match < MIN_SCORE:
+            continue
+
+        # 2. the final score starts as the match
+        score = match
+
+        # 3. backlog bonus
+        if game["playtime"] < BACKLOG_MINUTES:
+            score = round(score + BACKLOG_BONUS, 2)
+
+        # 4. keep both numbers
+        scored.append({
+            "name": game["name"],
+            "playtime": game["playtime"],
+            "match": match,
+            "score": score,
+        })
 
     scored.sort(key=lambda g: g["score"], reverse=True)
     return scored[:top_n]
@@ -65,4 +85,4 @@ if __name__ == "__main__":
     for mood, profile in profiles.items():
         print("\n===", mood, "===")
         for game in rank_library(library, profile):
-            print(game["score"], "-", game["name"], "-", game["playtime"], "min")
+            print(game["score"], f"(match {game['match']})", "-", game["name"], "-", game["playtime"], "min")
