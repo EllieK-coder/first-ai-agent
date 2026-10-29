@@ -4,8 +4,7 @@ A conversational AI agent that helps you decide what to play on Steam. You chat 
 
 Built in Python as a hands-on project to learn how AI agents work under the hood: tool calling, the agent loop, routing, and prompt design. It is built **without an agent framework**, so every part of the loop is visible in the code.
 
-> **Status:** work in progress. Core agent loop and Steam tag search are working; see the roadmap below.
-
+> **Status:** work in progress. Mood-based recommendations from the user's own Steam library work end to end in the chat agent; see the roadmap below.
 ## Features
 
 - **Natural conversation:** small talk, greetings and "just testing" messages get normal replies, with no unnecessary searches.
@@ -63,7 +62,8 @@ The conversation history (`messages` list) is the agent's memory: every user mes
 
 1. Install Ollama and pull the model:
    ```
-   ollama pull llama3.2
+   ollama pull qwen2.5:7b
+
    ```
 2. Clone the repo and create a virtual environment:
    ```
@@ -76,6 +76,8 @@ The conversation history (`messages` list) is the agent's memory: every user mes
 3. Install dependencies:
    ```
    pip install ollama requests
+   pip install -r requirements.txt
+
    ```
 4. Run the agent:
    ```
@@ -101,6 +103,7 @@ AI: Here are a few relaxing games you might enjoy: ...
 - **Models can recommend games outside the tool results.** Prompting the model to recommend only from tool results reduces this, but small models do not always follow it.
 - **Treat model output as untrusted.** When asked to pick from 312 Steam tags, the model regularly invented tags ("Chill", "Angry", "Challenging"). Every tag is validated against the real list. Clamping bad weights was itself a bug: zero/negative weights meaning "avoid this" were being raised to 0.1, so they are now rejected instead.
 - **Model size matters for structured output.** Same three moods, temperature 0:
+- **Fail fast, fail friendly. ** The agent checks once at startup that Ollama is reachable and exits with a clear message if not. During a chat, a lost connection is caught, the unanswered message is removed from the history, and the user can simply retry. Empty input is ignored in code rather than sent to the model, which would otherwise invent a reply.
 
   | | llama3.2 (3B) | qwen2.5 (7B) |
   |---|---|---|
@@ -133,6 +136,9 @@ AI: Here are a few relaxing games you might enjoy: ...
 - [x] **Final pick:** LLM chooses 1–3 games from the top candidates only and explains why
 - [x] **Agent wiring:** `recommend_from_library(mood)` as a tool in the chat agent (qwen2.5:7b), with empty input ignored in code
 - [x] **Backlog nudge in the final pick:** make the model include an unplayed game when one fits, and reply in plain text
+- [x] **Error handling:** clear messages instead of crashes when `library.json` is missing, when Ollama isn't running at startup, and when Ollama stops mid-chat (the agent keeps running)
+
+
 
 ### v1: still to do (in order)
 
@@ -140,9 +146,7 @@ AI: Here are a few relaxing games you might enjoy: ...
 - [ ] **Owned or new:** ask "a game you own, or something new?" only when the user hasn't said; default to the library
 - [ ] **Router context:** give the router recent messages, so replies like "yes please" are understood
 - [ ] **Store fallback:** when no owned game passes the threshold, search SteamSpy and exclude games the user already owns
-- [ ] **Error handling:** API failures and timeouts, Ollama not running, empty library or results (invalid model JSON already handled)
 - [ ] **Tests:** pytest suite for the pure functions (tag strengths, scoring, cleaning, profile validation)
-- [ ] **`requirements.txt`**
 - [ ] **README:** setup (Steam API key and ID), how to run, an example conversation
 
 ### After v1
