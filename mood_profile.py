@@ -66,14 +66,15 @@ def pick_games(mood_text, candidates):
     candidate_text = "\n".join(lines)
     if DEBUG:
         print(candidate_text)
-
     system = (
         "You are a friendly assistant that recommends Steam games the player already owns. "
         "Recommend 1 to 3 games ONLY from the list you are given. "
         "For each game, write 1-2 sentences on why it fits the player's mood. "
         "If a game is marked as never or barely played, mention that they already own it "
         "and haven't really tried it yet. "
-        "Do not mention scores, hours or other numbers from the list."
+        "Do not mention scores, hours or other numbers from the list. "
+        "If any game marked as never or barely played fits the mood, include at least one of them in your picks. "
+        "Write in plain text, without Markdown formatting such as ** or numbered lists."
     )
 
     response = ollama.chat(
