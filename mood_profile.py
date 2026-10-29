@@ -1,9 +1,15 @@
 import json
 import ollama
-from mood_engine import load_library, clean_library, all_tags, rank_library   # <-- NEW: rank_library
+from mood_engine import load_library, clean_library, all_tags, rank_library, BACKLOG_MINUTES
+
+
+
+
 
 MODEL = "qwen2.5:7b"
 DEBUG = True
+
+
 
 SYNONYMS = {           # invented words the model likes -> the real Steam tag
     "Chill": "Relaxing",
@@ -41,6 +47,43 @@ def mood_tags(library):            # <-- NEW
     """The curated mood tags that actually exist in this library."""
     available = set(all_tags(library))
     return [tag for tag in MOOD_TAGS if tag in available]
+
+
+def pick_games(mood_text, candidates):
+    """Let the LLM choose 1-3 games from the ranked candidates and explain why."""
+    top = candidates[:5]
+
+    lines = []
+    for game in top:
+        if game["playtime"] < BACKLOG_MINUTES:
+            lines.append(f"- {game['name']} | owned but never or barely played")
+        else:
+            hours = round(game["playtime"] / 60, 1)
+            lines.append(f"- {game['name']} | played {hours} hours")
+
+    candidate_text = "\n".join(lines)
+    if DEBUG:
+        print(candidate_text)
+
+    system = (
+        "You are a friendly assistant that recommends Steam games the player already owns. "
+        "Recommend 1 to 3 games ONLY from the list you are given. "
+        "For each game, write 1-2 sentences on why it fits the player's mood. "
+        "If a game is marked as never or barely played, mention that they already own it "
+        "and haven't really tried it yet. "
+        "Do not mention scores, hours or other numbers from the list."
+    )
+
+    response = ollama.chat(
+        model=MODEL,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": f"My mood: {mood_text}\n\nGames I own:\n{candidate_text}"},
+        ],
+        options={"temperature": 0.3},
+    )
+
+    return response.message.content
 
 
 def mood_to_profile(mood_text, allowed_tags):
@@ -97,9 +140,11 @@ def mood_to_profile(mood_text, allowed_tags):
     return profile
 
 
+
+
 if __name__ == "__main__":
     library = clean_library(load_library())
-    tags = mood_tags(library)                       # <-- NEW: curated list instead of all 312
+    tags = mood_tags(library)
     print("Mood tags available:", len(tags))
 
     moods = [
@@ -117,5 +162,7 @@ if __name__ == "__main__":
             print("Couldn't understand that mood.")
             continue
 
-        for game in rank_library(library, profile):
-            print(" ", game["score"], f"(match {game['match']})", "-", game["name"], "-", game["playtime"], "min")
+        ranked = rank_library(library, profile)
+        print(pick_games(mood, ranked))
+
+
