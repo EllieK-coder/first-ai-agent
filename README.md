@@ -47,7 +47,7 @@ The conversation history (`messages` list) is the agent's memory: every user mes
 
 | File | Purpose |
 |---|---|
-| `main.py` | Chat loop, system prompt, router and agent loop |
+| `main.py` | Chat loop, system prompt, router and agent loop; calls `recommend_from_library` when the user describes a mood |
 | `SteamSpy.py` | `find_games_by_tag` tool: queries the SteamSpy API |
 | `steam_library.py` | Fetches the user's owned games and playtime from the Steam Web API |
 | `build_library.py` | Builds a local `library.json` cache: owned games + SteamSpy tags with vote counts |
@@ -130,11 +130,13 @@ AI: Here are a few relaxing games you might enjoy: ...
 - [x] Minimum score threshold, so weak matches are not recommended
 - [x] Mood → profile: LLM turns the user's words into weighted tags as JSON, limited to a curated list of mood tags that exist in the library
 - [x] Validate model output: drop invented tags and zero/negative weights, map common synonyms to real tags
+- [x] **Final pick:** LLM chooses 1–3 games from the top candidates only and explains why
+- [x] **Agent wiring:** `recommend_from_library(mood)` as a tool in the chat agent (qwen2.5:7b), with empty input ignored in code
+- [x] **Backlog nudge in the final pick:** make the model include an unplayed game when one fits, and reply in plain text
 
 ### v1: still to do (in order)
-- [x] **Final pick:** LLM chooses 1–3 games from the top candidates only and explains why
-- [ ] **Backlog nudge in the final pick:** make the model include an unplayed game when one fits, and reply in plain text
-- [ ] **Agent wiring:** `recommend_from_library(mood)` and `find_new_games(mood)` as tools in the chat agent
+
+- [ ] **`find_new_games(mood)`** as a second tool (together with the store fallback)
 - [ ] **Owned or new:** ask "a game you own, or something new?" only when the user hasn't said; default to the library
 - [ ] **Router context:** give the router recent messages, so replies like "yes please" are understood
 - [ ] **Store fallback:** when no owned game passes the threshold, search SteamSpy and exclude games the user already owns
@@ -182,4 +184,4 @@ AI: Here are a few relaxing games you might enjoy: ...
 
 ## Tech
 
-Python · Ollama (llama3.2 for chat, qwen2.5:7b for mood profiles) · Steam Web API · SteamSpy API · requests
+Python · Ollama (qwen2.5:7b; llama3.2 for comparison) · Steam Web API · SteamSpy API · requests
