@@ -72,27 +72,32 @@ while True:
 
     messages.append({"role": "user", "content": user_text})
 
-    if wants_games(user_text):
-        tools = [recommend_from_library]
-    else:
-        tools = []
+    try:
+        if wants_games(user_text):
+            tools = [recommend_from_library]
+        else:
+            tools = []
 
-    # keep going until the model stops asking for tools
-    while True:
-        response = ollama.chat(model=MODEL, messages=messages, tools=tools)
-        messages.append(response.message)
+        # keep going until the model stops asking for tools
+        while True:
+            response = ollama.chat(model=MODEL, messages=messages, tools=tools)
+            messages.append(response.message)
 
-        if not response.message.tool_calls:
-            break
+            if not response.message.tool_calls:
+                break
 
-        for call in response.message.tool_calls:
-            name = call.function.name
-            args = call.function.arguments
-            if DEBUG:
-                print(f"[using {name} with {args}]")
+            for call in response.message.tool_calls:
+                name = call.function.name
+                args = call.function.arguments
+                if DEBUG:
+                    print(f"[using {name} with {args}]")
 
-            result = available_tools[name](**args)
+                result = available_tools[name](**args)
 
-            messages.append({"role": "tool", "content": result, "tool_name": name})
+                messages.append({"role": "tool", "content": result, "tool_name": name})
 
-    print("AI:", response.message.content)
+        print("AI:", response.message.content)
+
+    except ConnectionError:
+        print("AI: I lost the connection to Ollama. Start it again and repeat your message.")
+        messages.pop()
