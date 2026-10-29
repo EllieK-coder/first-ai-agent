@@ -9,7 +9,7 @@ from mood_engine import load_library, clean_library, all_tags, rank_library, BAC
 
 
 MODEL = "qwen2.5:7b"
-DEBUG = True
+DEBUG = False
 
 
 

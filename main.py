@@ -49,6 +49,9 @@ while True:
     user_text = input("You: ")
     if user_text == "quit":
         break
+    user_text = input("You: ")
+    if not user_text.strip():
+        continue
 
     messages.append({"role": "user", "content": user_text})
 
