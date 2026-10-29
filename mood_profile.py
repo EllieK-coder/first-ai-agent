@@ -1,4 +1,6 @@
 import json
+from typing import Any
+
 import ollama
 from mood_engine import load_library, clean_library, all_tags, rank_library, BACKLOG_MINUTES
 
@@ -85,6 +87,22 @@ def pick_games(mood_text, candidates):
 
     return response.message.content
 
+def recommend_from_library(mood: str) -> str:
+    """Recommend games the user already owns that fit their mood, for example
+    'I want to relax' or 'I'm angry and want to smash something'."""
+    library = clean_library(load_library())
+    tags = mood_tags(library)
+
+    profile = mood_to_profile(mood, tags)
+    if not profile:
+        return "I couldn't work out what kind of game fits that mood."
+
+    ranked = rank_library(library, profile)
+    if not ranked:
+        return "Nothing in your library fits that mood right now."
+
+    return pick_games(mood, ranked)
+
 
 def mood_to_profile(mood_text, allowed_tags):
     """Ask the LLM to turn the user's words into a weighted tag profile."""
@@ -143,26 +161,6 @@ def mood_to_profile(mood_text, allowed_tags):
 
 
 if __name__ == "__main__":
-    library = clean_library(load_library())
-    tags = mood_tags(library)
-    print("Mood tags available:", len(tags))
-
-    moods = [
-        "I had a long day and just want to relax",
-        "I'm so angry I want to smash something",
-        "I want something that really tests my skills",
-    ]
-
-    for mood in moods:
-        print("\n>", mood)
-        profile = mood_to_profile(mood, tags)
-        print("Profile:", profile)
-
-        if not profile:
-            print("Couldn't understand that mood.")
-            continue
-
-        ranked = rank_library(library, profile)
-        print(pick_games(mood, ranked))
-
-
+    print(recommend_from_library("I had a long day and just want to relax"))
+    print(recommend_from_library("I'm so angry I want to smash something"))
+    print(recommend_from_library("asdfgh"))

@@ -1,20 +1,20 @@
 import ollama
-from SteamSpy import find_games_by_tag
-
+from mood_profile import recommend_from_library
 DEBUG = False   # <-- 1. at the top, set once
 
-available_tools = {"find_games_by_tag": find_games_by_tag}
+available_tools = {"recommend_from_library": recommend_from_library}
 
 messages = [
     {
         "role": "system",
         "content": (
-            "You are a friendly assistant that helps the user pick a Steam game. "
-            "First chat with them to understand their mood and what they feel like playing. "
-            "Only use the find_games_by_tag tool once you know what kind of game they want. "
-            "Use Steam tag names like Relaxing, Roguelike, Puzzle, Horror, Open World, Co-op. "
-            "From the results, recommend 1 to 3 games and explain why they fit. "
-            "If the user only greets you or makes small talk, reply naturally and do not use any tools."
+            "You are a friendly assistant that helps the user decide what to play "
+            "from games they already own on Steam. "
+            "When the user describes their mood or what they feel like playing, "
+            "call the recommend_from_library tool and pass their mood in their own words. "
+            "Then share the tool's recommendation in a friendly, natural way. "
+            "Only mention games that appear in the tool's answer; never add other games. "
+            "If the user only greets you or makes small talk, reply naturally without using any tools."
         ),
     }
 ]
@@ -22,7 +22,7 @@ messages = [
 
 def wants_games(text: str) -> bool:
     check = ollama.chat(
-        model="llama3.2",
+        model="qwen2.5:7b",
         messages=[
             {
                 "role": "system",
@@ -53,7 +53,7 @@ while True:
     messages.append({"role": "user", "content": user_text})
 
     if wants_games(user_text):
-        tools = [find_games_by_tag]
+        tools = [recommend_from_library]
     else:
         tools = []
 
