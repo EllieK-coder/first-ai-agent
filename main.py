@@ -1,6 +1,11 @@
+import sys
+
 import ollama
+
 from mood_profile import recommend_from_library
-DEBUG = False   # <-- 1. at the top, set once
+
+MODEL = "qwen2.5:7b"
+DEBUG = False
 
 available_tools = {"recommend_from_library": recommend_from_library}
 
@@ -20,9 +25,19 @@ messages = [
 ]
 
 
+def ollama_is_running() -> bool:
+    """Return True if the Ollama server is reachable, otherwise False."""
+    try:
+        ollama.list()
+        return True
+    except ConnectionError:
+        return False
+
+
 def wants_games(text: str) -> bool:
+    """Router: ask the model whether this message is asking for game suggestions."""
     check = ollama.chat(
-        model="qwen2.5:7b",
+        model=MODEL,
         messages=[
             {
                 "role": "system",
@@ -36,22 +51,24 @@ def wants_games(text: str) -> bool:
         ],
     )
     answer = check.message.content.strip().upper()
-    if DEBUG:                                   # <-- 2. replaces the old print
+    if DEBUG:
         print(f"[router: {answer}]")
     return answer.startswith("YES")
 
 
-greeting = "Hello! How can I help you find a game today?"   # <-- 3. greeting is back
+if not ollama_is_running():
+    sys.exit("I can't reach Ollama. Please start the Ollama app and try again.")
+
+greeting = "Hello! How can I help you find a game today?"
 print("AI:", greeting)
 messages.append({"role": "assistant", "content": greeting})
 
 while True:
     user_text = input("You: ")
-    if user_text == "quit":
-        break
-    user_text = input("You: ")
     if not user_text.strip():
         continue
+    if user_text == "quit":
+        break
 
     messages.append({"role": "user", "content": user_text})
 
@@ -62,7 +79,7 @@ while True:
 
     # keep going until the model stops asking for tools
     while True:
-        response = ollama.chat(model="llama3.2", messages=messages, tools=tools)
+        response = ollama.chat(model=MODEL, messages=messages, tools=tools)
         messages.append(response.message)
 
         if not response.message.tool_calls:
@@ -71,7 +88,7 @@ while True:
         for call in response.message.tool_calls:
             name = call.function.name
             args = call.function.arguments
-            if DEBUG:                           #
+            if DEBUG:
                 print(f"[using {name} with {args}]")
 
             result = available_tools[name](**args)

@@ -1,6 +1,7 @@
 import json
 from typing import Any
 
+
 import ollama
 from mood_engine import load_library, clean_library, all_tags, rank_library, BACKLOG_MINUTES
 
@@ -90,7 +91,11 @@ def pick_games(mood_text, candidates):
 
 def recommend_from_library(mood: str) -> str:
     """Recommend games the user already owns that fit their mood, for example
-    'I want to relax' or 'I'm angry and want to smash something'."""
+        'I want to relax' or 'I'm angry and want to smash something'."""
+    try:
+        library = clean_library(load_library())
+    except FileNotFoundError:
+        return "Your library hasn't been built yet. Run build_library.py first."
     library = clean_library(load_library())
     tags = mood_tags(library)
 
@@ -103,6 +108,8 @@ def recommend_from_library(mood: str) -> str:
         return "Nothing in your library fits that mood right now."
 
     return pick_games(mood, ranked)
+
+
 
 
 def mood_to_profile(mood_text, allowed_tags):
