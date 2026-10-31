@@ -137,7 +137,7 @@ AI: Here are a few relaxing games you might enjoy: ...
 - [x] **Agent wiring:** `recommend_from_library(mood)` as a tool in the chat agent (qwen2.5:7b), with empty input ignored in code
 - [x] **Backlog nudge in the final pick:** make the model include an unplayed game when one fits, and reply in plain text
 - [x] **Error handling:** clear messages instead of crashes when `library.json` is missing, when Ollama isn't running at startup, and when Ollama stops mid-chat (the agent keeps running)
-
+- [x] **Tests:** 18 pytest tests for the pure functions: tag strengths, scoring and the score cap, threshold, backlog bonus, sorting, library cleaning, and profile validation (no model or network needed)
 
 
 ### v1: still to do (in order)
@@ -146,7 +146,6 @@ AI: Here are a few relaxing games you might enjoy: ...
 - [ ] **Owned or new:** ask "a game you own, or something new?" only when the user hasn't said; default to the library
 - [ ] **Router context:** give the router recent messages, so replies like "yes please" are understood
 - [ ] **Store fallback:** when no owned game passes the threshold, search SteamSpy and exclude games the user already owns
-- [ ] **Tests:** pytest suite for the pure functions (tag strengths, scoring, cleaning, profile validation)
 - [ ] **README:** setup (Steam API key and ID), how to run, an example conversation
 
 ### After v1
