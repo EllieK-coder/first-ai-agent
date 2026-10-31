@@ -144,8 +144,7 @@ The conversation history (`messages` list) is the agent's memory: every user mes
 
 ## Roadmap
 
-**Goal for v1:** the user describes a mood in their own words ("I want to relax", "I need to release some anger"), and the agent recommends 1–3 games from their own library, prioritising the forgotten backlog, and falls back to the Steam store only when nothing owned fits.
-
+**Goal for v1:** the user describes a mood in their own words ("I want to relax", "I need to release some anger"), and the agent recommends 1–3 games from their own library, prioritising the forgotten backlog. ✅ Done.
 ### v1: done ✅
 - [x] Chat loop with conversation memory
 - [x] Tool calling + hand-written agent loop
@@ -169,16 +168,15 @@ The conversation history (`messages` list) is the agent's memory: every user mes
 - [x] **Theme tags** (Space, Sci-fi, Colony Sim…) in the mood list, and each candidate's top tags passed to the final pick
 - [x] **README:** setup (Steam API key and ID), how to run, an example conversation
 
-### v1: still to do (in order)
-
-- [ ] **`find_new_games(mood)`** as a second tool (together with the store fallback)
-- [ ] **Owned or new:** ask "a game you own, or something new?" only when the user hasn't said; default to the library
-- [ ] **Store fallback:** when no owned game passes the threshold, search SteamSpy and exclude games the user already owns
 
 
 ### After v1
 
 **Recommendation quality**
+
+- [ ] **`find_new_games(mood)`** as a second tool (together with the store fallback)
+- [ ] **Owned or new:** ask "a game you own, or something new?" only when the user hasn't said; default to the library
+- [ ] **Store fallback:** when no owned game passes the threshold, search SteamSpy and exclude games the user already owns
 - [ ] Negative weights (e.g. `Horror: -0.8` for "relax") to push down games with the wrong feel
 - [ ] Handle different editions of the same game (e.g. Skyrim and Skyrim Special Edition)
 - [ ] Follow-up question for ambiguous moods ("reflexes or strategy?")
