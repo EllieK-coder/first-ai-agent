@@ -67,23 +67,20 @@ def rank_library(library, profile, top_n=10):
     for game in library:
         match = score_game(game, profile)
 
-        # 1. skip weak matches before any bonus
         if match < MIN_SCORE:
             continue
 
-        # 2. the final score starts as the match
         score = match
 
-        # 3. backlog bonus
         if game["playtime"] < BACKLOG_MINUTES:
             score = round(score + BACKLOG_BONUS, 2)
 
-        # 4. keep both numbers
         scored.append({
             "name": game["name"],
             "playtime": game["playtime"],
             "match": match,
             "score": score,
+            "tags": sorted(game["tags"], key=game["tags"].get, reverse=True)[:5],
         })
 
     scored.sort(key=lambda g: g["score"], reverse=True)

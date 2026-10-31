@@ -36,6 +36,11 @@ MOOD_TAGS = [          # only tags that describe a feeling
     "Story Rich", "Emotional", "Choices Matter", "Mystery",
     # fun / social
     "Funny", "Comedy", "Co-op", "Online Co-Op", "Party Game", "Arcade",
+    # themes / settings
+    "Space", "Sci-fi", "Space Sim", "Futuristic", "Aliens",
+    "Colony Sim", "Base Building", "City Builder", "Management",
+    "Fantasy", "Medieval", "Post-apocalyptic", "Cyberpunk",
+    "Survival", "Zombies", "Underwater",
 ]
 
 
@@ -129,6 +134,7 @@ def pick_games(mood_text, candidates):
         "Do not mention scores, hours or other numbers from the list. "
         "If any game marked as never or barely played fits the mood, include at least one of them in your picks. "
         "Write in plain text, without Markdown formatting such as ** or numbered lists."
+
     )
 
     response = ollama.chat(

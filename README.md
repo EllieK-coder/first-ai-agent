@@ -1,18 +1,48 @@
 # Steam Game Picker Agent
 
-A conversational AI agent that helps you decide what to play on Steam. You chat with it about your mood and what you feel like playing, and it searches Steam game data through a tool and recommends games that fit.
+A conversational AI agent that helps you decide what to play on Steam. You tell it how you feel in your own words, and it recommends 1–3 games from your own Steam library, putting games you've never played first.
 
 Built in Python as a hands-on project to learn how AI agents work under the hood: tool calling, the agent loop, routing, and prompt design. It is built **without an agent framework**, so every part of the loop is visible in the code.
 
 > **Status:** work in progress. Mood-based recommendations from the user's own Steam library work end to end in the chat agent; see the roadmap below.
 ## Features
 
-- **Natural conversation:** small talk, greetings and "just testing" messages get normal replies, with no unnecessary searches.
-- **Tool calling:** the model decides when to call `find_games_by_tag`, which queries the SteamSpy API for games with a given Steam tag (e.g. `Relaxing`, `Roguelike`, `Horror`).
-- **Router step:** a lightweight YES/NO classification call decides whether the user is actually asking for game suggestions before tools are made available to the model.
+- **Natural conversation:** a quick introduction and small talk about your day; game suggestions only come when you ask for them.
+- **Mood-based recommendations:** describe how you feel in your own words ("I had a long day", "I want to smash something") and the agent turns it into matching Steam tags to find games that fit.
+- **Your own library, backlog first:** recommendations come only from games you own, and games you've never or barely played get a boost, so forgotten games resurface.
+- **Grounded picks:** code ranks your library and the LLM only chooses from the top candidates, so it never guesses which games you own.
+- **Validated LLM output:** the mood profile is checked against real Steam tags; invented tags and invalid weights are dropped.
+- **Tool calling:** when the user describes a mood, the model calls `recommend_from_library(mood)`, which runs the whole recommendation pipeline and returns the result.
+- **Router + guardrail:** a keyword check and a lightweight YES/NO model call decide whether the user wants a game. If they do and the model skips the tool, code runs the recommendation pipeline itself, so the agent never names a game it didn't get from your library.
 - **Agent loop:** the model can request tools, receive their results, and continue until it produces a final answer.
-- **Runs locally:** uses [Ollama](https://ollama.com) with a local model, so no API key or cloud costs.
-- **Debug mode:** a `DEBUG` flag shows router decisions and tool calls for troubleshooting.
+- **Error handling:** clear messages instead of crashes when the library hasn't been built, or when Ollama isn't running or stops mid-chat.
+- **Runs locally:** uses [Ollama](https://ollama.com) with a local model, so there are no cloud AI services or AI costs (only a free Steam Web API key is needed).
+- **Tested:** 18 pytest tests cover scoring, ranking, library cleaning and profile validation, without needing the model or the network.
+- **Debug mode:** `DEBUG` flags in `main.py` and `mood_profile.py` show router decisions, tool calls and candidate lists.
+
+
+
+
+## Example conversation
+```
+AI: Hello! How can I help you find a game today?
+You: Hello i had a long day today and i am looking to relax
+AI: Since you had a long day and want to relax, you might enjoy playing Planet Coaster. It's a great simulation game where you can design and manage your own theme park, which can be a fun and creative way to unwind. Alternatively, you could try Disney Dreamlight Valley, a charming game with cute characters and a peaceful atmosphere that might be just what you need to relax.
+You: What about something sci-fi, i do want to relax in space and build something
+AI: For a relaxing space experience where you can build and create, you might enjoy Toy Tinker Simulator. It offers a whimsical space setting where you can build and create unique toys and machines in a serene environment. Alternatively, Spore is a more complex option that lets you build and create from the cellular level all the way up to the galaxy level. It's a vast and engaging sandbox where you can explore and craft in a cosmic setting.
+You: Do you have any sci-fi space colony sims?
+AI: For a sci-fi space colony simulation, you might enjoy RimWorld. It offers a unique blend of resource management and survival elements, giving you a taste of what it's like to run a space colony. If you're looking for a more advanced experience, Oxygen Not Included is also a great choice. Its intricate systems and creative challenges will transport you to a sci-fi setting where you manage resources and survival in a colony.
+You: Sounds great thank you!
+AI: You're welcome! I hope you have a fantastic time playing RimWorld or Oxygen Not Included. If you need any more recommendations, feel free to ask!
+You: quit
+
+
+
+
+
+
+```
+
 
 ## How it works
 
@@ -20,98 +50,95 @@ Built in Python as a hands-on project to learn how AI agents work under the hood
 User message
      │
      ▼
-Router (YES/NO): does the user want game suggestions?
+Router (YES/NO): is the user asking for a game?
      │
-     ├── NO  → model replies with no tools available
+     ├── NO  → the model replies normally, no tools
      │
-     └── YES → model is given the find_games_by_tag tool
+     └── YES → the model can call recommend_from_library(mood)
                     │
                     ▼
-              ┌─ Agent loop ──────────────────────────────┐
-              │ 1. Send the full conversation to the model │
-              │ 2. Model requests a tool call?             │
-              │      yes → run the Python function,        │
-              │            add the result to the convo,    │
-              │            go back to 1                    │
-              │      no  → final answer, exit the loop     │
-              └────────────────────────────────────────────┘
+   ┌─ recommend_from_library ─────────────────────────────┐
+   │ 1. Mood → profile (LLM, JSON, validated)             │
+   │      "long day, want to relax"                       │
+   │      → {Relaxing: 1.0, Casual: 0.6, ...}             │
+   │ 2. Rank the library (pure Python)                    │
+   │      tag strengths × weights, minimum match 0.4,     │
+   │      +0.1 bonus for unplayed games                   │
+   │ 3. Final pick (LLM)                                  │
+   │      chooses 1–3 of the top 5 and explains why       │
+   └──────────────────────────────────────────────────────┘
                     │
                     ▼
-            Recommendation shown to the user
+        The agent replies with the recommendation
 ```
+
+The LLM never sees the whole library: code does the ranking, and the model only interprets the mood and chooses from the top candidates. This keeps every recommendation grounded in games the user actually owns.
 
 The conversation history (`messages` list) is the agent's memory: every user message, model reply and tool result is appended to it and sent with each request.
 
-## Project structure
-
-| File | Purpose |
-|---|---|
+## Project structure| File | Purpose |
 | `main.py` | Chat loop, system prompt, router and agent loop; calls `recommend_from_library` when the user describes a mood |
-| `SteamSpy.py` | `find_games_by_tag` tool: queries the SteamSpy API |
+| `mood_profile.py` | LLM steps: mood → validated tag profile, and the final pick of 1–3 games; `recommend_from_library` combines the whole pipeline |
+| `mood_engine.py` | Pure Python: library cleaning, tag strengths, scoring, minimum threshold and backlog bonus |
+| `build_library.py` | Builds the local `library.json` cache: owned games + SteamSpy tags with vote counts |
 | `steam_library.py` | Fetches the user's owned games and playtime from the Steam Web API |
-| `build_library.py` | Builds a local `library.json` cache: owned games + SteamSpy tags with vote counts |
-| `mood_engine.py` | Cleans the library and ranks it against a weighted mood profile: tag strengths, match score, backlog bonus, minimum threshold |
-| `mood_profile.py` | LLM steps: turns the user's words into a validated, weighted mood profile using a curated tag list, and picks 1–3 games from the ranked candidates with a short explanation |
+| `SteamSpy.py` | SteamSpy tag search, to be reused for the store fallback |
+| `test_mood_engine.py`, `test_mood_profile.py` | 18 pytest tests for the pure functions |
 | `test_connection.py` | Minimal check that Ollama is running and responding |
-
-`library.json` and `.env` (API keys) are git-ignored.
 
 ## Setup
 
-**Requirements:** Python 3.10+ and [Ollama](https://ollama.com).
+**Requirements:** Python 3.10+, [Ollama](https://ollama.com), and a Steam account.
 
-1. Install Ollama and pull the model:
+1. **Install Ollama and pull the model:**
    ```
    ollama pull qwen2.5:7b
-
    ```
-2. Clone the repo and create a virtual environment:
+2. **Clone the repo and create a virtual environment:**
    ```
    git clone https://github.com/EllieK-coder/first-ai-agent.git
    cd first-ai-agent
    python -m venv .venv
    .venv\Scripts\activate        # Windows
    source .venv/bin/activate     # macOS / Linux
-   ```
-3. Install dependencies:
-   ```
-   pip install ollama requests
    pip install -r requirements.txt
-
    ```
-4. Run the agent:
+3. **Add your Steam details** in a `.env` file in the project folder:
+   ```
+   STEAM_API_KEY=your-key
+   STEAM_ID=your-17-digit-steam-id
+   ```
+   - Get a free API key at [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey).
+   - Your Steam ID is the 17-digit number starting with `7656119` (Steam → your name → Account details).
+   - In Steam's privacy settings, set **Game details** to **Public**.
+4. **Build your library** (once; takes a few minutes because of API rate limits):
+   ```
+   python build_library.py
+   ```
+5. **Run the agent:**
    ```
    python main.py
    ```
-   Type `quit` to exit. Set `DEBUG = True` in `main.py` to see router decisions and tool calls.
-
-## Example
-
-```
-AI: Hello! How can I help you find a game today?
-You: hi
-AI: Hi! How's your day going so far? ...
-You: I had a long day, I want something relaxing
-AI: Here are a few relaxing games you might enjoy: ...
-```
-
+   Type `quit` to exit. Set `DEBUG = True` in `main.py` or `mood_profile.py` to see router decisions, tool calls and candidate lists.
+6. **Run the tests:**
+   ```
+   pytest
+   ```
 ## Challenges and lessons learned
 
 - **Small models over-use tools.** With a 3B-parameter model, the agent originally searched for games even when the user just said "hi", and sometimes printed tool calls as plain text. Instructions in the system prompt alone did not fix this. Adding a separate **router** step, a single YES/NO question that small models handle well, solved it.
 - **Deterministic parts belong in code.** The opening greeting is printed by the program, not generated by the model, so it is consistent every time.
 - **External data is messy.** SteamSpy's tag lists include games that only weakly match a tag (e.g. action games appearing under "Relaxing"). The model then tries to justify those results. Filtering by tag vote counts is planned.
 - **Models can recommend games outside the tool results.** Prompting the model to recommend only from tool results reduces this, but small models do not always follow it.
-- **Treat model output as untrusted.** When asked to pick from 312 Steam tags, the model regularly invented tags ("Chill", "Angry", "Challenging"). Every tag is validated against the real list. Clamping bad weights was itself a bug: zero/negative weights meaning "avoid this" were being raised to 0.1, so they are now rejected instead.
-- **Model size matters for structured output.** Same three moods, temperature 0:
+- **External data is messy.** SteamSpy tags include games that only weakly match (action games under "Relaxing"). Tag vote counts are now normalised into 0–1 strengths per game, and a minimum match score filters out weak fits.- **Model size matters for structured output.** Same three moods, temperature 0:
 - **Fail fast, fail friendly. ** The agent checks once at startup that Ollama is reachable and exits with a clear message if not. During a chat, a lost connection is caught, the unanswered message is removed from the history, and the user can simply retry. Empty input is ignored in code rather than sent to the model, which would otherwise invent a reply.
-
+- **Prompt rules are not guarantees.** In testing, a follow-up message ("not up for farming, I want some fighting") was answered without calling the tool, and the model invented a game the user doesn't own. The fix is to route game requests to the recommendation pipeline in code, rather than relying on the model to choose the tool.
   | | llama3.2 (3B) | qwen2.5 (7B) |
   |---|---|---|
   | Invented tags dropped | 7 | 1 |
   | Real tags kept (relax / anger / challenge) | 1 / 5 / 2 | 3 / 7 / 5 |
-
-- **A smaller, curated tag list beats a long one.** Offering all 312 library tags let the model pick visual or setting tags (`Cute`, `Dark`) that describe how a game looks, not how it feels. A curated list of ~50 mood tags fixed the choices and made the prompt much shorter.
-- **Examples beat rules.** The prompt asked for 4–8 tags but the model returned 2–3. Adding two worked examples (few-shot prompting) produced full 6–7 tag profiles.
+- **Prompt rules are not guarantees.** The system prompt said "never name a game the tool didn't return", but when the router wrongly said NO, the model still invented games the user doesn't own (Factorio, Kerbal Space Program). The fix was in code: a keyword check before the LLM router, and a guardrail that runs the pipeline itself if the model skips the tool.
+- **Give the model facts, or it fills gaps with fiction.** When the final pick only saw game names, it described SimCity 4 as a "sci-fi metropolis" to match the request. Passing each candidate's top Steam tags grounded the descriptions, and adding theme tags (Space, Sci-fi, Colony Sim) let "sci-fi base-building" find RimWorld.- **Examples beat rules.** The prompt asked for 4–8 tags but the model returned 2–3. Adding two worked examples (few-shot prompting) produced full 6–7 tag profiles.
 - **Separate the pipeline steps.** The LLM never sees the whole library: code ranks the games, and the model only chooses from the top five and explains its choice. This keeps answers grounded in games the user actually owns.
 - **Better prompts can expose scoring bugs.** Fuller profiles made results shorter, because scores were normalised by the weight of *all* tags, an implicit AND ("must match everything"). Moods are an OR ("cozy farming or a quiet drive"), so scores are now normalised by the top 3 weights.
 
@@ -138,15 +165,16 @@ AI: Here are a few relaxing games you might enjoy: ...
 - [x] **Backlog nudge in the final pick:** make the model include an unplayed game when one fits, and reply in plain text
 - [x] **Error handling:** clear messages instead of crashes when `library.json` is missing, when Ollama isn't running at startup, and when Ollama stops mid-chat (the agent keeps running)
 - [x] **Tests:** 18 pytest tests for the pure functions: tag strengths, scoring and the score cap, threshold, backlog bonus, sorting, library cleaning, and profile validation (no model or network needed)
-
+- [x] **Router context + guardrail:** the router sees the agent's last message, obvious requests are caught by a keyword check, and code runs the pipeline if the model skips the tool
+- [x] **Theme tags** (Space, Sci-fi, Colony Sim…) in the mood list, and each candidate's top tags passed to the final pick
+- [x] **README:** setup (Steam API key and ID), how to run, an example conversation
 
 ### v1: still to do (in order)
 
 - [ ] **`find_new_games(mood)`** as a second tool (together with the store fallback)
 - [ ] **Owned or new:** ask "a game you own, or something new?" only when the user hasn't said; default to the library
-- [ ] **Router context:** give the router recent messages, so replies like "yes please" are understood
 - [ ] **Store fallback:** when no owned game passes the threshold, search SteamSpy and exclude games the user already owns
-- [ ] **README:** setup (Steam API key and ID), how to run, an example conversation
+
 
 ### After v1
 
@@ -156,6 +184,7 @@ AI: Here are a few relaxing games you might enjoy: ...
 - [ ] Follow-up question for ambiguous moods ("reflexes or strategy?")
 - [ ] `get_game_details` (price, short description) from the Steam store
 - [ ] Evaluation set of moods with expected results; extend the model comparison
+- [ ] Treat themes as requirements: when the user names a setting (space, fantasy), filter candidates to games with that tag instead of relying on the prompt
 
 **Users, privacy and security**
 - [ ] **Onboarding:** accept a Steam profile link, custom name or 17-digit ID at startup and resolve it (`ResolveVanityURL`), so users never edit config files
@@ -187,4 +216,4 @@ AI: Here are a few relaxing games you might enjoy: ...
 
 ## Tech
 
-Python · Ollama (qwen2.5:7b; llama3.2 for comparison) · Steam Web API · SteamSpy API · requests
+Python · Ollama (qwen2.5:7b; llama3.2 for comparison) · Steam Web API · SteamSpy API · requests · pytest
